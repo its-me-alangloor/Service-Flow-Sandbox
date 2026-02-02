@@ -19,6 +19,23 @@
         body { font-family: 'Inter', sans-serif; }
         .font-mono { font-family: 'JetBrains Mono', monospace; }
 
+        /* Drag and Drop Styles */
+        .dragging {
+            opacity: 0.5;
+            background-color: #f1f5f9 !important;
+        }
+        
+        .drag-over {
+            border-top: 2px solid #2563eb !important;
+        }
+
+        .drag-handle {
+            cursor: grab;
+        }
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+
         @media print {
             @page { size: portrait; margin: 15mm; }
             body { background: white !important; }
@@ -26,7 +43,8 @@
             .print-container { box-shadow: none !important; border: none !important; width: 100% !important; padding: 0 !important; margin: 0 !important; }
             table { width: 100% !important; border: 1px solid #e2e8f0 !important; }
             th { background-color: #0f172a !important; color: white !important; -webkit-print-color-adjust: exact; }
-            .section-label { color: #2563eb !important; -webkit-print-color-adjust: exact; }
+            .section-label-input { border: none !important; color: #2563eb !important; -webkit-print-color-adjust: exact; font-weight: 900 !important; }
+            .total-row { background-color: #f8fafc !important; -webkit-print-color-adjust: exact; }
         }
     </style>
 </head>
@@ -34,9 +52,8 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useRef } = React;
 
-        // Custom Icon Component to handle Lucide in this environment
         const Icon = ({ name, size = 18, className = "" }) => {
             useEffect(() => {
                 if (window.lucide) {
@@ -48,15 +65,13 @@
 
         const INITIAL_DATA = {
             "2026-03-01": {
-                title: "Lamentations 1",
-                subtitle: "Bittersweet",
+                title: "Service Plan",
+                subtitle: "Weekly Flow",
                 items: [
-                    { id: 1, section: "CHECKS", time900: "07:57am", time1045: "09:42am", length: "5:00", item: "Service Flow Meeting", notes: "" },
-                    { id: 2, section: "CHECKS", time900: "08:02am", time1045: "09:47am", length: "25:00", item: "Cue-to-Cue Rehearsal", notes: "8:00 am start" },
-                    { id: 3, section: "CHECKS", time900: "08:27am", time1045: "10:12am", length: "8:00", item: "Teaching Pastor Check", notes: "Pastor ready at 8:25" },
-                    { id: 4, section: "GATHERING", time900: "08:58am", time1045: "10:43am", length: "2:00", item: "Video Call to Worship", notes: "" },
-                    { id: 5, section: "WORD", time900: "09:00am", time1045: "10:45am", length: "36:00", item: "Sermon", notes: "" },
-                    { id: 6, section: "BENEDICTION", time900: "09:36am", time1045: "11:21am", length: "0:30", item: "Benediction", notes: "" }
+                    { id: 1, section: "GATHERING", length: "20:00", item: "Call to Worship", notes: "" },
+                    { id: 2, section: "WORD", length: "36:00", item: "Sermon", notes: "" },
+                    { id: 3, section: "TABLE", length: "4:00", item: "Communion", notes: "" },
+                    { id: 4, section: "SENDING", length: "5:00", item: "Benediction", notes: "" }
                 ]
             }
         };
@@ -66,43 +81,30 @@
             return new Date(year, month - 1, day);
         };
 
-        const addMinutes = (timeStr, minsToAdd) => {
-            if (!timeStr) return "00:00am";
-            const match = timeStr.match(/(\d+):(\d+)(am|pm)/);
-            if (!match) return timeStr;
-            let [_, hours, minutes, modifier] = match;
-            hours = parseInt(hours);
-            minutes = parseInt(minutes);
-            if (modifier === 'pm' && hours !== 12) hours += 12;
-            if (modifier === 'am' && hours === 12) hours = 0;
-            const date = new Date();
-            date.setHours(hours, minutes + minsToAdd, 0);
-            let newHours = date.getHours();
-            const newMinutes = date.getMinutes().toString().padStart(2, '0');
-            const newModifier = newHours >= 12 ? 'pm' : 'am';
-            newHours = newHours % 12 || 12;
-            return `${newHours.toString().padStart(2, '0')}:${newMinutes}${newModifier}`;
+        const formatDuration = (totalSeconds) => {
+            const mins = Math.floor(totalSeconds / 60);
+            const secs = totalSeconds % 60;
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        };
+
+        const parseDurationToSeconds = (durationStr) => {
+            if (!durationStr) return 0;
+            const parts = durationStr.split(':');
+            if (parts.length === 2) {
+                return (parseInt(parts[0]) * 60) + parseInt(parts[1]);
+            }
+            return parseInt(parts[0]) * 60 || 0;
         };
 
         function App() {
             const [currentDate, setCurrentDate] = useState("2026-03-01");
             const [services, setServices] = useState(INITIAL_DATA);
+            const [draggedItemIndex, setDraggedItemIndex] = useState(null);
+            const [dragOverIndex, setDragOverIndex] = useState(null);
 
             useEffect(() => {
                 lucide.createIcons();
             });
-
-            const recalculateTimes = (items) => {
-                if (items.length === 0) return [];
-                const updated = [...items];
-                for (let i = 1; i < updated.length; i++) {
-                    const prev = updated[i-1];
-                    const lengthMins = parseInt(prev.length.split(':')[0] || 0);
-                    updated[i].time900 = addMinutes(prev.time900, lengthMins);
-                    updated[i].time1045 = addMinutes(prev.time1045, lengthMins);
-                }
-                return updated;
-            };
 
             const handleUpdateItem = (id, field, value) => {
                 setServices(prev => {
@@ -110,7 +112,7 @@
                     const updatedItems = currentItems.map(item => 
                         item.id === id ? { ...item, [field]: value } : item
                     );
-                    return { ...prev, [currentDate]: { ...prev[currentDate], items: recalculateTimes(updatedItems) } };
+                    return { ...prev, [currentDate]: { ...prev[currentDate], items: updatedItems } };
                 });
             };
 
@@ -119,8 +121,6 @@
                 const newItem = {
                     id: Math.random(),
                     section: prevItem ? prevItem.section : "NEW",
-                    time900: "09:00am", 
-                    time1045: "10:45am",
                     length: "5:00",
                     item: "New Item",
                     notes: ""
@@ -128,15 +128,34 @@
                 setServices(prev => {
                     const newItems = [...prev[currentDate].items];
                     newItems.splice(index + 1, 0, newItem);
-                    return { ...prev, [currentDate]: { ...prev[currentDate], items: recalculateTimes(newItems) } };
+                    return { ...prev, [currentDate]: { ...prev[currentDate], items: newItems } };
                 });
             };
 
             const removeItem = (id) => {
                 setServices(prev => {
                     const newItems = prev[currentDate].items.filter(i => i.id !== id);
-                    return { ...prev, [currentDate]: { ...prev[currentDate], items: recalculateTimes(newItems) } };
+                    return { ...prev, [currentDate]: { ...prev[currentDate], items: newItems } };
                 });
+            };
+
+            const onDragStart = (index) => setDraggedItemIndex(index);
+            const onDragOver = (e, index) => {
+                e.preventDefault();
+                setDragOverIndex(index);
+            };
+
+            const onDrop = () => {
+                if (draggedItemIndex === null || dragOverIndex === null) return;
+                const newItems = [...services[currentDate].items];
+                const [removed] = newItems.splice(draggedItemIndex, 1);
+                newItems.splice(dragOverIndex, 0, removed);
+                setServices(prev => ({
+                    ...prev,
+                    [currentDate]: { ...prev[currentDate], items: newItems }
+                }));
+                setDraggedItemIndex(null);
+                setDragOverIndex(null);
             };
 
             const addNewDate = () => {
@@ -145,7 +164,6 @@
                 const nextDate = new Date(lastDate);
                 nextDate.setDate(lastDate.getDate() + 7);
                 const dateStr = nextDate.toISOString().split('T')[0];
-                
                 setServices({
                     ...services,
                     [dateStr]: {
@@ -174,7 +192,12 @@
                 if (currentDate === dateToDelete) setCurrentDate(remaining[0]);
             };
 
-            const handlePrint = () => window.print();
+            const calculateTotalLength = () => {
+                const totalSeconds = services[currentDate].items.reduce((acc, item) => {
+                    return acc + parseDurationToSeconds(item.length);
+                }, 0);
+                return formatDuration(totalSeconds);
+            };
 
             const currentService = services[currentDate];
 
@@ -187,7 +210,6 @@
                                     <Icon name="play-circle" className="text-blue-600" />
                                     Service Flow
                                 </h1>
-                                
                                 <div className="flex bg-white rounded-lg shadow-sm border p-1 overflow-x-auto max-w-full items-center">
                                     {Object.keys(services).sort().map(date => (
                                         <div key={date} className="relative group flex items-center">
@@ -216,14 +238,13 @@
                                     </button>
                                 </div>
                             </div>
-                            
-                            <button onClick={handlePrint} className="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-slate-800 transition-all">
+                            <button onClick={() => window.print()} className="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-slate-800 transition-all">
                                 <Icon name="file-text" size={16} />
                                 Download PDF
                             </button>
                         </div>
 
-                        <div className="bg-white rounded-xl border p-6 mb-6 shadow-sm print-header">
+                        <div className="bg-white rounded-xl border p-6 mb-6 shadow-sm">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
                                 <div className="space-y-4">
                                     <div>
@@ -251,7 +272,7 @@
                                         onChange={(e) => updateCurrentDateKey(e.target.value)}
                                         className="text-right text-sm font-bold text-slate-600 bg-slate-50 border px-3 py-1.5 rounded outline-none no-print"
                                     />
-                                    <div className="hidden print:block text-sm font-bold text-slate-400">
+                                    <div className="hidden print:block text-sm font-bold text-slate-400 uppercase tracking-widest">
                                         {parseLocalDate(currentDate).toLocaleDateString(undefined, { dateStyle: 'full' })}
                                     </div>
                                 </div>
@@ -259,12 +280,11 @@
                         </div>
 
                         <div className="bg-white rounded-xl border shadow-md overflow-hidden">
-                            <table className="w-full text-left">
+                            <table className="w-full text-left border-collapse">
                                 <thead className="bg-slate-900 text-white text-[10px] uppercase tracking-widest">
                                     <tr>
-                                        <th className="px-6 py-4">9:00am</th>
-                                        <th className="px-6 py-4">10:45am</th>
-                                        <th className="px-6 py-4 w-20">Length</th>
+                                        <th className="w-10 no-print"></th>
+                                        <th className="px-6 py-4 w-24 text-center">Length</th>
                                         <th className="px-6 py-4">Detail</th>
                                         <th className="px-6 py-4">Notes</th>
                                         <th className="px-6 py-4 w-16 no-print"></th>
@@ -272,40 +292,72 @@
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {currentService.items.map((item, idx) => (
-                                        <tr key={item.id} className="group hover:bg-blue-50/30 transition-colors">
-                                            <td className="px-6 py-4 font-mono text-xs font-bold text-slate-500">{item.time900}</td>
-                                            <td className="px-6 py-4 font-mono text-xs font-bold text-slate-500">{item.time1045}</td>
+                                        <tr 
+                                            key={item.id} 
+                                            draggable="true"
+                                            onDragStart={() => onDragStart(idx)}
+                                            onDragOver={(e) => onDragOver(e, idx)}
+                                            onDrop={onDrop}
+                                            className={`group transition-all duration-200 ${
+                                                draggedItemIndex === idx ? 'dragging' : ''
+                                            } ${dragOverIndex === idx ? 'drag-over' : ''} hover:bg-blue-50/30`}
+                                        >
+                                            <td className="w-10 pl-4 no-print">
+                                                <div className="drag-handle text-slate-300 group-hover:text-slate-400 transition-colors">
+                                                    <Icon name="grip-vertical" size={14} />
+                                                </div>
+                                            </td>
                                             <td className="px-6 py-4">
                                                 <input 
                                                     value={item.length} 
                                                     onChange={e => handleUpdateItem(item.id, 'length', e.target.value)}
-                                                    className="w-full bg-slate-100 rounded text-center font-mono text-xs py-1"
+                                                    className="w-full bg-slate-100 rounded text-center font-mono text-xs py-1.5 outline-none focus:bg-white focus:ring-1 focus:ring-blue-400"
+                                                    placeholder="0:00"
                                                 />
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <div className="text-[9px] font-black text-blue-600 section-label">{item.section}</div>
+                                            <td className="px-6 py-4 min-w-[200px]">
+                                                <input 
+                                                    value={item.section} 
+                                                    onChange={e => handleUpdateItem(item.id, 'section', e.target.value.toUpperCase())}
+                                                    className="text-[9px] font-black text-blue-600 tracking-wider section-label-input outline-none bg-transparent w-full block hover:bg-blue-50 focus:bg-white"
+                                                    placeholder="SECTION"
+                                                />
                                                 <input 
                                                     value={item.item} 
                                                     onChange={e => handleUpdateItem(item.id, 'item', e.target.value)}
-                                                    className="font-bold text-sm outline-none w-full bg-transparent"
+                                                    className="font-bold text-sm outline-none w-full bg-transparent hover:bg-slate-50 focus:bg-white"
+                                                    placeholder="Item Name"
                                                 />
                                             </td>
                                             <td className="px-6 py-4">
                                                 <input 
                                                     value={item.notes} 
                                                     onChange={e => handleUpdateItem(item.id, 'notes', e.target.value)}
-                                                    className="text-xs italic text-slate-400 outline-none w-full bg-transparent"
+                                                    className="text-xs italic text-slate-400 outline-none w-full bg-transparent hover:bg-slate-50 focus:bg-white"
+                                                    placeholder="..."
                                                 />
                                             </td>
                                             <td className="px-6 py-4 no-print">
                                                 <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <button onClick={() => addItem(idx)} className="p-1 text-blue-600"><Icon name="plus" size={16}/></button>
-                                                    <button onClick={() => removeItem(item.id)} className="p-1 text-red-600"><Icon name="trash-2" size={16}/></button>
+                                                    <button onClick={() => addItem(idx)} className="p-1 text-blue-600 hover:bg-blue-50 rounded"><Icon name="plus" size={16}/></button>
+                                                    <button onClick={() => removeItem(item.id)} className="p-1 text-red-600 hover:bg-red-50 rounded"><Icon name="trash-2" size={16}/></button>
                                                 </div>
                                             </td>
                                         </tr>
                                     ))}
                                 </tbody>
+                                <tfoot>
+                                    <tr className="bg-slate-50 total-row font-bold border-t-2 border-slate-200">
+                                        <td className="no-print"></td>
+                                        <td className="px-6 py-5 text-center font-mono text-sm text-blue-600">
+                                            {calculateTotalLength()}
+                                        </td>
+                                        <td colSpan="2" className="px-6 py-5 text-xs uppercase tracking-widest text-slate-400">
+                                            Total Service Duration
+                                        </td>
+                                        <td className="no-print"></td>
+                                    </tr>
+                                </tfoot>
                             </table>
                         </div>
                     </div>
