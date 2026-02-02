@@ -38,16 +38,11 @@
 
         // Custom Icon Component to handle Lucide in this environment
         const Icon = ({ name, size = 18, className = "" }) => {
-            const [svg, setSvg] = useState("");
             useEffect(() => {
                 if (window.lucide) {
-                    const iconSvg = lucide.createIcons({
-                        icons: { [name]: lucide[name] }
-                    });
+                    lucide.createIcons();
                 }
-            }, [name]);
-            
-            // Simple fallback: we'll use a span and let lucide-js replace it
+            });
             return <i data-lucide={name} style={{ width: size, height: size }} className={className}></i>;
         };
 
@@ -92,7 +87,6 @@
         function App() {
             const [currentDate, setCurrentDate] = useState("2026-03-01");
             const [services, setServices] = useState(INITIAL_DATA);
-            const [notification, setNotification] = useState(null);
 
             useEffect(() => {
                 lucide.createIcons();
@@ -145,6 +139,41 @@
                 });
             };
 
+            const addNewDate = () => {
+                const dates = Object.keys(services).sort();
+                const lastDate = parseLocalDate(dates[dates.length - 1]);
+                const nextDate = new Date(lastDate);
+                nextDate.setDate(lastDate.getDate() + 7);
+                const dateStr = nextDate.toISOString().split('T')[0];
+                
+                setServices({
+                    ...services,
+                    [dateStr]: {
+                        ...services[currentDate],
+                        items: services[currentDate].items.map(item => ({ ...item, id: Math.random() }))
+                    }
+                });
+                setCurrentDate(dateStr);
+            };
+
+            const updateCurrentDateKey = (newDateStr) => {
+                if (!newDateStr || services[newDateStr]) return;
+                const newServices = { ...services };
+                newServices[newDateStr] = newServices[currentDate];
+                delete newServices[currentDate];
+                setServices(newServices);
+                setCurrentDate(newDateStr);
+            };
+
+            const deleteDate = (dateToDelete) => {
+                if (Object.keys(services).length <= 1) return;
+                const remaining = Object.keys(services).filter(d => d !== dateToDelete).sort();
+                const newServices = { ...services };
+                delete newServices[dateToDelete];
+                setServices(newServices);
+                if (currentDate === dateToDelete) setCurrentDate(remaining[0]);
+            };
+
             const handlePrint = () => window.print();
 
             const currentService = services[currentDate];
@@ -152,13 +181,42 @@
             return (
                 <div className="p-4 md:p-8">
                     <div className="max-w-6xl mx-auto print-container">
-                        <div className="flex justify-between items-center mb-8 no-print">
-                            <div>
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 no-print">
+                            <div className="flex items-center gap-4">
                                 <h1 className="text-2xl font-black text-slate-900 flex items-center gap-2 uppercase tracking-tighter">
                                     <Icon name="play-circle" className="text-blue-600" />
                                     Service Flow
                                 </h1>
+                                
+                                <div className="flex bg-white rounded-lg shadow-sm border p-1 overflow-x-auto max-w-full items-center">
+                                    {Object.keys(services).sort().map(date => (
+                                        <div key={date} className="relative group flex items-center">
+                                            <button
+                                                onClick={() => setCurrentDate(date)}
+                                                className={`px-3 py-1.5 rounded-md transition-all text-xs font-bold whitespace-nowrap ${
+                                                    currentDate === date 
+                                                        ? 'bg-blue-600 text-white shadow-sm' 
+                                                        : 'text-slate-600 hover:bg-slate-100'
+                                                }`}
+                                            >
+                                                {parseLocalDate(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                            </button>
+                                            {Object.keys(services).length > 1 && (
+                                                <button 
+                                                    onClick={() => deleteDate(date)}
+                                                    className="ml-1 mr-1 p-0.5 text-slate-300 hover:text-red-500 transition-colors"
+                                                >
+                                                    <Icon name="x" size={12} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                    <button onClick={addNewDate} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded ml-1">
+                                        <Icon name="plus-circle" size={18} />
+                                    </button>
+                                </div>
                             </div>
+                            
                             <button onClick={handlePrint} className="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-slate-800 transition-all">
                                 <Icon name="file-text" size={16} />
                                 Download PDF
@@ -166,14 +224,36 @@
                         </div>
 
                         <div className="bg-white rounded-xl border p-6 mb-6 shadow-sm print-header">
-                            <div className="grid grid-cols-2 gap-4">
-                                <input 
-                                    value={currentService.title} 
-                                    onChange={e => setServices({...services, [currentDate]: {...currentService, title: e.target.value}})}
-                                    className="text-2xl font-black outline-none border-b border-transparent focus:border-blue-500"
-                                />
-                                <div className="text-right text-sm font-bold text-slate-400">
-                                    {parseLocalDate(currentDate).toLocaleDateString(undefined, { dateStyle: 'full' })}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1 no-print">Series / Topic</label>
+                                        <input 
+                                            value={currentService.title} 
+                                            onChange={e => setServices({...services, [currentDate]: {...currentService, title: e.target.value}})}
+                                            className="text-2xl font-black outline-none border-b border-transparent focus:border-blue-500 w-full"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1 no-print">Theme</label>
+                                        <input 
+                                            value={currentService.subtitle} 
+                                            onChange={e => setServices({...services, [currentDate]: {...currentService, subtitle: e.target.value}})}
+                                            className="text-lg font-bold text-slate-500 outline-none border-b border-transparent focus:border-blue-500 w-full"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="text-right flex flex-col items-end">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1 no-print">Service Date</label>
+                                    <input 
+                                        type="date"
+                                        value={currentDate}
+                                        onChange={(e) => updateCurrentDateKey(e.target.value)}
+                                        className="text-right text-sm font-bold text-slate-600 bg-slate-50 border px-3 py-1.5 rounded outline-none no-print"
+                                    />
+                                    <div className="hidden print:block text-sm font-bold text-slate-400">
+                                        {parseLocalDate(currentDate).toLocaleDateString(undefined, { dateStyle: 'full' })}
+                                    </div>
                                 </div>
                             </div>
                         </div>
