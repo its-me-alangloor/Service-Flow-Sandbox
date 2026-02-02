@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Service Flow Sandbox</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React and ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel for JSX transformation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono&display=swap');
+        
+        body { font-family: 'Inter', sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+        @media print {
+            @page { size: portrait; margin: 15mm; }
+            body { background: white !important; }
+            .no-print { display: none !important; }
+            .print-container { box-shadow: none !important; border: none !important; width: 100% !important; padding: 0 !important; margin: 0 !important; }
+            table { width: 100% !important; border: 1px solid #e2e8f0 !important; }
+            th { background-color: #0f172a !important; color: white !important; -webkit-print-color-adjust: exact; }
+            .section-label { color: #2563eb !important; -webkit-print-color-adjust: exact; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Custom Icon Component to handle Lucide in this environment
+        const Icon = ({ name, size = 18, className = "" }) => {
+            const [svg, setSvg] = useState("");
+            useEffect(() => {
+                if (window.lucide) {
+                    const iconSvg = lucide.createIcons({
+                        icons: { [name]: lucide[name] }
+                    });
+                }
+            }, [name]);
+            
+            // Simple fallback: we'll use a span and let lucide-js replace it
+            return <i data-lucide={name} style={{ width: size, height: size }} className={className}></i>;
+        };
+
+        const INITIAL_DATA = {
+            "2026-03-01": {
+                title: "Lamentations 1",
+                subtitle: "Bittersweet",
+                items: [
+                    { id: 1, section: "CHECKS", time900: "07:57am", time1045: "09:42am", length: "5:00", item: "Service Flow Meeting", notes: "" },
+                    { id: 2, section: "CHECKS", time900: "08:02am", time1045: "09:47am", length: "25:00", item: "Cue-to-Cue Rehearsal", notes: "8:00 am start" },
+                    { id: 3, section: "CHECKS", time900: "08:27am", time1045: "10:12am", length: "8:00", item: "Teaching Pastor Check", notes: "Pastor ready at 8:25" },
+                    { id: 4, section: "GATHERING", time900: "08:58am", time1045: "10:43am", length: "2:00", item: "Video Call to Worship", notes: "" },
+                    { id: 5, section: "WORD", time900: "09:00am", time1045: "10:45am", length: "36:00", item: "Sermon", notes: "" },
+                    { id: 6, section: "BENEDICTION", time900: "09:36am", time1045: "11:21am", length: "0:30", item: "Benediction", notes: "" }
+                ]
+            }
+        };
+
+        const parseLocalDate = (dateStr) => {
+            const [year, month, day] = dateStr.split('-').map(Number);
+            return new Date(year, month - 1, day);
+        };
+
+        const addMinutes = (timeStr, minsToAdd) => {
+            if (!timeStr) return "00:00am";
+            const match = timeStr.match(/(\d+):(\d+)(am|pm)/);
+            if (!match) return timeStr;
+            let [_, hours, minutes, modifier] = match;
+            hours = parseInt(hours);
+            minutes = parseInt(minutes);
+            if (modifier === 'pm' && hours !== 12) hours += 12;
+            if (modifier === 'am' && hours === 12) hours = 0;
+            const date = new Date();
+            date.setHours(hours, minutes + minsToAdd, 0);
+            let newHours = date.getHours();
+            const newMinutes = date.getMinutes().toString().padStart(2, '0');
+            const newModifier = newHours >= 12 ? 'pm' : 'am';
+            newHours = newHours % 12 || 12;
+            return `${newHours.toString().padStart(2, '0')}:${newMinutes}${newModifier}`;
+        };
+
+        function App() {
+            const [currentDate, setCurrentDate] = useState("2026-03-01");
+            const [services, setServices] = useState(INITIAL_DATA);
+            const [notification, setNotification] = useState(null);
+
+            useEffect(() => {
+                lucide.createIcons();
+            });
+
+            const recalculateTimes = (items) => {
+                if (items.length === 0) return [];
+                const updated = [...items];
+                for (let i = 1; i < updated.length; i++) {
+                    const prev = updated[i-1];
+                    const lengthMins = parseInt(prev.length.split(':')[0] || 0);
+                    updated[i].time900 = addMinutes(prev.time900, lengthMins);
+                    updated[i].time1045 = addMinutes(prev.time1045, lengthMins);
+                }
+                return updated;
+            };
+
+            const handleUpdateItem = (id, field, value) => {
+                setServices(prev => {
+                    const currentItems = prev[currentDate].items;
+                    const updatedItems = currentItems.map(item => 
+                        item.id === id ? { ...item, [field]: value } : item
+                    );
+                    return { ...prev, [currentDate]: { ...prev[currentDate], items: recalculateTimes(updatedItems) } };
+                });
+            };
+
+            const addItem = (index) => {
+                const prevItem = services[currentDate].items[index];
+                const newItem = {
+                    id: Math.random(),
+                    section: prevItem ? prevItem.section : "NEW",
+                    time900: "09:00am", 
+                    time1045: "10:45am",
+                    length: "5:00",
+                    item: "New Item",
+                    notes: ""
+                };
+                setServices(prev => {
+                    const newItems = [...prev[currentDate].items];
+                    newItems.splice(index + 1, 0, newItem);
+                    return { ...prev, [currentDate]: { ...prev[currentDate], items: recalculateTimes(newItems) } };
+                });
+            };
+
+            const removeItem = (id) => {
+                setServices(prev => {
+                    const newItems = prev[currentDate].items.filter(i => i.id !== id);
+                    return { ...prev, [currentDate]: { ...prev[currentDate], items: recalculateTimes(newItems) } };
+                });
+            };
+
+            const handlePrint = () => window.print();
+
+            const currentService = services[currentDate];
+
+            return (
+                <div className="p-4 md:p-8">
+                    <div className="max-w-6xl mx-auto print-container">
+                        <div className="flex justify-between items-center mb-8 no-print">
+                            <div>
+                                <h1 className="text-2xl font-black text-slate-900 flex items-center gap-2 uppercase tracking-tighter">
+                                    <Icon name="play-circle" className="text-blue-600" />
+                                    Service Flow
+                                </h1>
+                            </div>
+                            <button onClick={handlePrint} className="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-slate-800 transition-all">
+                                <Icon name="file-text" size={16} />
+                                Download PDF
+                            </button>
+                        </div>
+
+                        <div className="bg-white rounded-xl border p-6 mb-6 shadow-sm print-header">
+                            <div className="grid grid-cols-2 gap-4">
+                                <input 
+                                    value={currentService.title} 
+                                    onChange={e => setServices({...services, [currentDate]: {...currentService, title: e.target.value}})}
+                                    className="text-2xl font-black outline-none border-b border-transparent focus:border-blue-500"
+                                />
+                                <div className="text-right text-sm font-bold text-slate-400">
+                                    {parseLocalDate(currentDate).toLocaleDateString(undefined, { dateStyle: 'full' })}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-xl border shadow-md overflow-hidden">
+                            <table className="w-full text-left">
+                                <thead className="bg-slate-900 text-white text-[10px] uppercase tracking-widest">
+                                    <tr>
+                                        <th className="px-6 py-4">9:00am</th>
+                                        <th className="px-6 py-4">10:45am</th>
+                                        <th className="px-6 py-4 w-20">Length</th>
+                                        <th className="px-6 py-4">Detail</th>
+                                        <th className="px-6 py-4">Notes</th>
+                                        <th className="px-6 py-4 w-16 no-print"></th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {currentService.items.map((item, idx) => (
+                                        <tr key={item.id} className="group hover:bg-blue-50/30 transition-colors">
+                                            <td className="px-6 py-4 font-mono text-xs font-bold text-slate-500">{item.time900}</td>
+                                            <td className="px-6 py-4 font-mono text-xs font-bold text-slate-500">{item.time1045}</td>
+                                            <td className="px-6 py-4">
+                                                <input 
+                                                    value={item.length} 
+                                                    onChange={e => handleUpdateItem(item.id, 'length', e.target.value)}
+                                                    className="w-full bg-slate-100 rounded text-center font-mono text-xs py-1"
+                                                />
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="text-[9px] font-black text-blue-600 section-label">{item.section}</div>
+                                                <input 
+                                                    value={item.item} 
+                                                    onChange={e => handleUpdateItem(item.id, 'item', e.target.value)}
+                                                    className="font-bold text-sm outline-none w-full bg-transparent"
+                                                />
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <input 
+                                                    value={item.notes} 
+                                                    onChange={e => handleUpdateItem(item.id, 'notes', e.target.value)}
+                                                    className="text-xs italic text-slate-400 outline-none w-full bg-transparent"
+                                                />
+                                            </td>
+                                            <td className="px-6 py-4 no-print">
+                                                <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button onClick={() => addItem(idx)} className="p-1 text-blue-600"><Icon name="plus" size={16}/></button>
+                                                    <button onClick={() => removeItem(item.id)} className="p-1 text-red-600"><Icon name="trash-2" size={16}/></button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
