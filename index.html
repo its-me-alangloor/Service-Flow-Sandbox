@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Flow Sandbox</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
     <script>
       Babel.registerPreset('custom-react', {
         presets: [
@@ -15,44 +13,58 @@
         ]
       });
     </script>
-
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    
     <script src="https://unpkg.com/lucide@latest"></script>
-    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono&display=swap');
         
         body { font-family: 'Inter', sans-serif; }
         .font-mono { font-family: 'JetBrains Mono', monospace; }
-
-        /* Drag and Drop Styles */
+        
         .dragging {
-            opacity: 0.5;
+            opacity: 0.4;
             background-color: #f1f5f9 !important;
         }
-        
         .drag-over {
-            border-top: 2px solid #2563eb !important;
+            border-top: 3px solid #2563eb !important;
         }
-
         .drag-handle {
             cursor: grab;
         }
         .drag-handle:active {
             cursor: grabbing;
         }
-
         @media print {
-            @media print { size: portrait; margin: 15mm; }
-            body { background: white !important; }
+            html, body { background: white !important; color: black !important; }
+            @page { size: portrait; margin: 15mm; }
             .no-print { display: none !important; }
-            .print-container { box-shadow: none !important; border: none !important; width: 100% !important; padding: 0 !important; margin: 0 !important; }
+            .print-container {
+                box-shadow: none !important;
+                border: none !important;
+                width: 100% !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
             table { width: 100% !important; border: 1px solid #e2e8f0 !important; }
-            th { background-color: #0f172a !important; color: white !important; -webkit-print-color-adjust: exact; }
-            .section-label-input { border: none !important; color: #2563eb !important; -webkit-print-color-adjust: exact; font-weight: 900 !important; }
-            .total-row { background-color: #f8fafc !important; -webkit-print-color-adjust: exact; }
+            th {
+                background-color: #0f172a !important;
+                color: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .section-label-input {
+                border: none !important;
+                color: #2563eb !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                font-weight: 900 !important;
+            }
+            .total-row {
+                background-color: #f8fafc !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
         }
     </style>
 </head>
@@ -60,15 +72,22 @@
     <div id="root"></div>
 
     <script type="text/babel" data-presets="custom-react">
-        const { useState, useEffect, useRef } = React;
+        const { useState, useEffect } = React;
 
+        // Optimized Icon component ensuring lucide parses additions dynamically safely
         const Icon = ({ name, size = 18, className = "" }) => {
             useEffect(() => {
-                if (window.lucide) {
-                    lucide.createIcons();
+                if (window.lucide && typeof window.lucide.createIcons === 'function') {
+                    window.lucide.createIcons();
                 }
-            });
-            return <i data-lucide={name} style={{ width: size, height: size }} className={className}></i>;
+            }); // Runs on every render to pick up new dynamic items
+            return (
+                <i 
+                    data-lucide={name} 
+                    style={{ width: size, height: size }} 
+                    className={`inline-block ${className}`}
+                ></i>
+            );
         };
 
         const INITIAL_DATA = {
@@ -99,9 +118,9 @@
             if (!durationStr) return 0;
             const parts = durationStr.split(':');
             if (parts.length === 2) {
-                return (parseInt(parts[0]) * 60) + parseInt(parts[1]);
+                return (parseInt(parts[0], 10) * 60) + parseInt(parts[1], 10) || 0;
             }
-            return parseInt(parts[0]) * 60 || 0;
+            return parseInt(parts[0], 10) * 60 || 0;
         };
 
         function App() {
@@ -110,11 +129,12 @@
             const [draggedItemIndex, setDraggedItemIndex] = useState(null);
             const [dragOverIndex, setDragOverIndex] = useState(null);
 
+            // Initial verification layout build pass icon render hook
             useEffect(() => {
                 if (window.lucide) {
-                    lucide.createIcons();
+                    window.lucide.createIcons();
                 }
-            });
+            }, []);
 
             const handleUpdateItem = (id, field, value) => {
                 setServices(prev => {
@@ -122,15 +142,21 @@
                     const updatedItems = currentItems.map(item => 
                         item.id === id ? { ...item, [field]: value } : item
                     );
-                    return { ...prev, [currentDate]: { ...prev[currentDate], items: updatedItems } };
+                    return { 
+                        ...prev, 
+                        [currentDate]: { 
+                            ...prev[currentDate], 
+                            items: updatedItems 
+                        } 
+                    };
                 });
             };
 
             const addItem = (index) => {
                 const prevItem = services[currentDate].items[index];
                 const newItem = {
-                    id: Math.random(),
-                    section: prevItem ? prevItem.section : "NEW",
+                    id: Date.now() + Math.random(), // more unique than just Math.random()
+                    section: prevItem ? prevItem.section : "NEW SECTION",
                     length: "5:00",
                     item: "New Item",
                     notes: ""
@@ -138,14 +164,26 @@
                 setServices(prev => {
                     const newItems = [...prev[currentDate].items];
                     newItems.splice(index + 1, 0, newItem);
-                    return { ...prev, [currentDate]: { ...prev[currentDate], items: newItems } };
+                    return { 
+                        ...prev, 
+                        [currentDate]: { 
+                            ...prev[currentDate], 
+                            items: newItems 
+                        } 
+                    };
                 });
             };
 
             const removeItem = (id) => {
                 setServices(prev => {
                     const newItems = prev[currentDate].items.filter(i => i.id !== id);
-                    return { ...prev, [currentDate]: { ...prev[currentDate], items: newItems } };
+                    return { 
+                        ...prev, 
+                        [currentDate]: { 
+                            ...prev[currentDate], 
+                            items: newItems 
+                        } 
+                    };
                 });
             };
 
@@ -168,6 +206,11 @@
                 setDragOverIndex(null);
             };
 
+            const onDragEnd = () => {
+                setDraggedItemIndex(null);
+                setDragOverIndex(null);
+            };
+
             const addNewDate = () => {
                 const dates = Object.keys(services).sort();
                 const lastDate = parseLocalDate(dates[dates.length - 1]);
@@ -178,7 +221,12 @@
                     ...services,
                     [dateStr]: {
                         ...services[currentDate],
-                        items: services[currentDate].items.map(item => ({ ...item, id: Math.random() }))
+                        title: services[currentDate].title,
+                        subtitle: services[currentDate].subtitle,
+                        items: services[currentDate].items.map(item => ({ 
+                            ...item, 
+                            id: Date.now() + Math.random() 
+                        }))
                     }
                 });
                 setCurrentDate(dateStr);
@@ -209,7 +257,7 @@
                 return formatDuration(totalSeconds);
             };
 
-            const currentService = services[currentDate];
+            const currentService = services[currentDate] || { title: "", subtitle: "", items: [] };
 
             return (
                 <div className="p-4 md:p-8">
@@ -243,115 +291,6 @@
                                             )}
                                         </div>
                                     ))}
-                                    <button onClick={addNewDate} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded ml-1">
-                                        <Icon name="plus-circle" size={18} />
-                                    </button>
-                                </div>
-                            </div>
-                            <button onClick={() => window.print()} className="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-slate-800 transition-all">
-                                <Icon name="file-text" size={16} />
-                                Download PDF
-                            </button>
-                        </div>
-
-                        <div className="bg-white rounded-xl border p-6 mb-6 shadow-sm">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1 no-print">Series / Topic</label>
-                                        <input 
-                                            value={currentService.title} 
-                                            onChange={e => setServices({...services, [currentDate]: {...currentService, title: e.target.value}})}
-                                            className="text-2xl font-black outline-none border-b border-transparent focus:border-blue-500 w-full"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1 no-print">Theme</label>
-                                        <input 
-                                            value={currentService.subtitle} 
-                                            onChange={e => setServices({...services, [currentDate]: {...currentService, subtitle: e.target.value}})}
-                                            className="text-lg font-bold text-slate-500 outline-none border-b border-transparent focus:border-blue-500 w-full"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="text-right flex flex-col items-end">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1 no-print">Service Date</label>
-                                    <input 
-                                        type="date"
-                                        value={currentDate}
-                                        onChange={(e) => updateCurrentDateKey(e.target.value)}
-                                        className="text-right text-sm font-bold text-slate-600 bg-slate-50 border px-3 py-1.5 rounded outline-none no-print"
-                                    />
-                                    <div className="hidden print:block text-sm font-bold text-slate-400 uppercase tracking-widest">
-                                        {parseLocalDate(currentDate).toLocaleDateString(undefined, { dateStyle: 'full' })}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-white rounded-xl border shadow-md overflow-hidden">
-                            <table className="w-full text-left border-collapse">
-                                <thead className="bg-slate-900 text-white text-[10px] uppercase tracking-widest">
-                                    <tr>
-                                        <th className="w-10 no-print"></th>
-                                        <th className="px-6 py-4 w-24 text-center">Length</th>
-                                        <th className="px-6 py-4">Detail</th>
-                                        <th className="px-6 py-4">Notes</th>
-                                        <th className="px-6 py-4 w-16 no-print"></th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {currentService.items.map((item, idx) => (
-                                        <tr 
-                                            key={item.id} 
-                                            draggable="true"
-                                            onDragStart={() => onDragStart(idx)}
-                                            onDragOver={(e) => onDragOver(e, idx)}
-                                            onDrop={onDrop}
-                                            className={`group transition-all duration-200 ${
-                                                draggedItemIndex === idx ? 'dragging' : ''
-                                            } ${dragOverIndex === idx ? 'drag-over' : ''} hover:bg-blue-50/30`}
-                                        >
-                                            <td className="w-10 pl-4 no-print">
-                                                <div className="drag-handle text-slate-300 group-hover:text-slate-400 transition-colors">
-                                                    <Icon name="grip-vertical" size={14} />
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <input 
-                                                    value={item.length} 
-                                                    onChange={e => handleUpdateItem(item.id, 'length', e.target.value)}
-                                                    className="w-full bg-slate-100 rounded text-center font-mono text-xs py-1.5 outline-none focus:bg-white focus:ring-1 focus:ring-blue-400"
-                                                    placeholder="0:00"
-                                                />
-                                            </td>
-                                            <td className="px-6 py-4 min-w-[200px]">
-                                                <input 
-                                                    value={item.section} 
-                                                    onChange={e => handleUpdateItem(item.id, 'section', e.target.value.toUpperCase())}
-                                                    className="text-[9px] font-black text-blue-600 tracking-wider section-label-input outline-none bg-transparent w-full block hover:bg-blue-50 focus:bg-white"
-                                                    placeholder="SECTION"
-                                                />
-                                                <input 
-                                                    value={item.item} 
-                                                    onChange={e => handleUpdateItem(item.id, 'item', e.target.value)}
-                                                    className="font-bold text-sm outline-none w-full bg-transparent hover:bg-slate-50 focus:bg-white"
-                                                    placeholder="Item Name"
-                                                />
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <input 
-                                                    value={item.notes} 
-                                                    onChange={e => handleUpdateItem(item.id, 'notes', e.target.value)}
-                                                    className="text-xs italic text-slate-400 outline-none w-full bg-transparent hover:bg-slate-50 focus:bg-white"
-                                                    placeholder="..."
-                                                />
-                                            </td>
-                                            <td className="px-6 py-4 no-print">
-                                                <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <button onClick={() => addItem(idx)} className="p-1 text-blue-600 hover:bg-blue-50 rounded"><Icon name="plus" size={16}/></button>
-                                                    <button onClick={() => removeItem(item.id)} className="p-1 text-red-600 hover:bg-red-50 rounded"><Icon name="trash-2" size={16}/></button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                    <button 
+                                        onClick={addNewDate} 
+                                        className="p-1.5 text-blue-600 hover:bg-
