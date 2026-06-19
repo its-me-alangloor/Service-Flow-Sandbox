@@ -277,7 +277,12 @@
                                 <div className="text-right flex flex-col items-end">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1 no-print">Service Date</label>
                                     <input 
-                                        type="date"
+                                         type="date"
                                         value={currentDate}
                                         onChange={(e) => updateCurrentDateKey(e.target.value)}
                                         className="text-right text-sm font-bold text-slate-600 bg-slate-50 border px-3 py-1.5 rounded outline-none no-print"
+                                   />
+                            <div className="hidden print:block text-sm font-bold text-slate-400 uppercase tracking-widest">
+                                {parseLocalDate(currentDate).toLocaleDateString(undefined, { dateStyle: 'full' })}
+                            </div>
+                        </div>
