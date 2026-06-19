@@ -288,3 +288,38 @@
                                 </div>
                             </div>
                         </div>
+
+                        <div className="bg-white rounded-xl border shadow-md overflow-hidden">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="bg-slate-900 text-white text-[10px] uppercase tracking-widest">
+                                    <tr>
+                                        <th className="w-10 no-print"></th>
+                                        <th className="px-6 py-4 w-24 text-center">Length</th>
+                                        <th className="px-6 py-4">Detail</th>
+                                        <th className="px-6 py-4">Notes</th>
+                                        <th className="px-6 py-4 w-16 no-print"></th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {currentService.items.map((item, idx) => (
+                                        <tr 
+                                            key={item.id} 
+                                            draggable="true"
+                                            onDragStart={() => onDragStart(idx)}
+                                            onDragOver={(e) => onDragOver(e, idx)}
+                                            onDrop={onDrop}
+                                            className={`group transition-all duration-200 ${
+                                                draggedItemIndex === idx ? 'dragging' : ''
+                                            } ${dragOverIndex === idx ? 'drag-over' : ''} hover:bg-blue-50/30`}
+                                        >
+                                            <td className="w-10 pl-4 no-print">
+                                                <div className="drag-handle text-slate-300 group-hover:text-slate-400 transition-colors">
+                                                    <Icon name="grip-vertical" size={14} />
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <input 
+                                                    value={item.length} 
+                                                    onChange={e => handleUpdateItem(item.id, 'length', e.target.value)}
+                                                    className="w-full bg-slate-100 rounded text-center font-mono text-xs py-1.5 outline-none focus:bg-white focus:ring-1 focus:ring-blue-400"
+                                                    placeholder="0:0
