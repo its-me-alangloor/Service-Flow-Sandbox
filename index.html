@@ -4,15 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Service Flow Sandbox</title>
-    <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React and ReactDOM -->
+    
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <script>
+      Babel.registerPreset('custom-react', {
+        presets: [
+          [Babel.availablePresets['react'], { runtime: 'classic' }]
+        ]
+      });
+    </script>
+
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <!-- Babel for JSX transformation -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Lucide Icons -->
+    
     <script src="https://unpkg.com/lucide@latest"></script>
+    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono&display=swap');
         
@@ -37,7 +45,7 @@
         }
 
         @media print {
-            @page { size: portrait; margin: 15mm; }
+            @media print { size: portrait; margin: 15mm; }
             body { background: white !important; }
             .no-print { display: none !important; }
             .print-container { box-shadow: none !important; border: none !important; width: 100% !important; padding: 0 !important; margin: 0 !important; }
@@ -51,12 +59,7 @@
 <body class="bg-slate-50 text-slate-800">
     <div id="root"></div>
 
-    <script type="text/babel" data-type="module">
-        // Force Babel to use the classic runtime instead of looking for react/jsx-runtime
-        Babel.setPlugins([
-            ['transform-react-jsx', { runtime: 'classic' }]
-        ]);
-
+    <script type="text/babel" data-presets="custom-react">
         const { useState, useEffect, useRef } = React;
 
         const Icon = ({ name, size = 18, className = "" }) => {
@@ -108,7 +111,9 @@
             const [dragOverIndex, setDragOverIndex] = useState(null);
 
             useEffect(() => {
-                lucide.createIcons();
+                if (window.lucide) {
+                    lucide.createIcons();
+                }
             });
 
             const handleUpdateItem = (id, field, value) => {
@@ -275,103 +280,4 @@
                                         type="date"
                                         value={currentDate}
                                         onChange={(e) => updateCurrentDateKey(e.target.value)}
-                                        className="text-right text-sm font-bold text-slate-600 bg-slate-50 border px-3 py-1.5 rounded outline-none no-print"
-                                    />
-                                    <div className="hidden print:block text-sm font-bold text-slate-400 uppercase tracking-widest">
-                                        {parseLocalDate(currentDate).toLocaleDateString(undefined, { dateStyle: 'full' })}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-white rounded-xl border shadow-md overflow-hidden">
-                            <table className="w-full text-left border-collapse">
-                                <thead className="bg-slate-900 text-white text-[10px] uppercase tracking-widest">
-                                    <tr>
-                                        <th className="w-10 no-print"></th>
-                                        <th className="px-6 py-4 w-24 text-center">Length</th>
-                                        <th className="px-6 py-4">Detail</th>
-                                        <th className="px-6 py-4">Notes</th>
-                                        <th className="px-6 py-4 w-16 no-print"></th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {currentService.items.map((item, idx) => (
-                                        <tr 
-                                            key={item.id} 
-                                            draggable="true"
-                                            onDragStart={() => onDragStart(idx)}
-                                            onDragOver={(e) => onDragOver(e, idx)}
-                                            onDrop={onDrop}
-                                            className={`group transition-all duration-200 ${
-                                                draggedItemIndex === idx ? 'dragging' : ''
-                                            } ${dragOverIndex === idx ? 'drag-over' : ''} hover:bg-blue-50/30`}
-                                        >
-                                            <td className="w-10 pl-4 no-print">
-                                                <div className="drag-handle text-slate-300 group-hover:text-slate-400 transition-colors">
-                                                    <Icon name="grip-vertical" size={14} />
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <input 
-                                                    value={item.length} 
-                                                    onChange={e => handleUpdateItem(item.id, 'length', e.target.value)}
-                                                    className="w-full bg-slate-100 rounded text-center font-mono text-xs py-1.5 outline-none focus:bg-white focus:ring-1 focus:ring-blue-400"
-                                                    placeholder="0:00"
-                                                />
-                                            </td>
-                                            <td className="px-6 py-4 min-w-[200px]">
-                                                <input 
-                                                    value={item.section} 
-                                                    onChange={e => handleUpdateItem(item.id, 'section', e.target.value.toUpperCase())}
-                                                    className="text-[9px] font-black text-blue-600 tracking-wider section-label-input outline-none bg-transparent w-full block hover:bg-blue-50 focus:bg-white"
-                                                    placeholder="SECTION"
-                                                />
-                                                <input 
-                                                    value={item.item} 
-                                                    onChange={e => handleUpdateItem(item.id, 'item', e.target.value)}
-                                                    className="font-bold text-sm outline-none w-full bg-transparent hover:bg-slate-50 focus:bg-white"
-                                                    placeholder="Item Name"
-                                                />
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <input 
-                                                    value={item.notes} 
-                                                    onChange={e => handleUpdateItem(item.id, 'notes', e.target.value)}
-                                                    className="text-xs italic text-slate-400 outline-none w-full bg-transparent hover:bg-slate-50 focus:bg-white"
-                                                    placeholder="..."
-                                                />
-                                            </td>
-                                            <td className="px-6 py-4 no-print">
-                                                <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <button onClick={() => addItem(idx)} className="p-1 text-blue-600 hover:bg-blue-50 rounded"><Icon name="plus" size={16}/></button>
-                                                    <button onClick={() => removeItem(item.id)} className="p-1 text-red-600 hover:bg-red-50 rounded"><Icon name="trash-2" size={16}/></button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                                <tfoot>
-                                    <tr className="bg-slate-50 total-row font-bold border-t-2 border-slate-200">
-                                        <td className="no-print"></td>
-                                        <td className="px-6 py-5 text-center font-mono text-sm text-blue-600">
-                                            {calculateTotalLength()}
-                                        </td>
-                                        <td colSpan="2" className="px-6 py-5 text-xs uppercase tracking-widest text-slate-400">
-                                            Total Service Duration
-                                        </td>
-                                        <td className="no-print"></td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            );
-        }
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
-</html>
+                                        className="text-right text-sm font-bold text-slate-600
