@@ -51,7 +51,12 @@
 <body class="bg-slate-50 text-slate-800">
     <div id="root"></div>
 
-    <script type="text/babel" data-type="module" data-plugins="transform-react-jsx">
+    <script type="text/babel" data-type="module">
+        // Force Babel to use the classic runtime instead of looking for react/jsx-runtime
+        Babel.setPlugins([
+            ['transform-react-jsx', { runtime: 'classic' }]
+        ]);
+
         const { useState, useEffect, useRef } = React;
 
         const Icon = ({ name, size = 18, className = "" }) => {
