@@ -17,7 +17,7 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;600;800&display=swap');
         
         body { font-family: 'Inter', sans-serif; }
         .font-mono { font-family: 'JetBrains Mono', monospace; }
@@ -117,9 +117,9 @@
             if (!durationStr) return 0;
             const parts = durationStr.split(':');
             if (parts.length === 2) {
-                return (parseInt(parts[0], 10) * 60) + parseInt(parts[1], 10) || 0;
+                return (parseInt(parts[0], 10) * 60) + (parseInt(parts[1], 10) || 0);
             }
-            return parseInt(parts[0], 10) * 60 || 0;
+            return (parseInt(parts[0], 10) * 60) || 0;
         };
 
         function App() {
@@ -425,20 +425,15 @@
                                                 </td>
                                             </tr>
                                         ))}
-                                        
-                                        {/* Dynamic Total Sum Calculation Footer Row */}
-                                        <tr className="total-row bg-slate-50 font-bold border-t border-slate-200">
-                                            <td className="p-4 no-print"></td>
-                                            <td className="p-4 text-xs font-black text-slate-400 tracking-wider text-right uppercase">Total Runtime</td>
-                                            <td className="p-4 font-mono text-base text-slate-900 font-black tracking-tight border-r border-slate-100">
-                                                {calculateTotalLength()}
-                                            </td>
-                                            <td colSpan="2" className="p-4 text-xs text-slate-400 font-medium italic">
-                                                Total elements: {currentService.items.length}
-                                            </td>
-                                            <td className="p-4 no-print"></td>
-                                        </tr>
                                     </tbody>
+                                    <tfoot>
+                                        <tr className="total-row border-t-2 border-slate-900/10 font-bold text-slate-800">
+                                            <td className="p-3 no-print"></td>
+                                            <td className="p-3 text-xs tracking-wider uppercase text-slate-500 font-black">Total Duration</td>
+                                            <td className="p-3 font-mono text-sm font-extrabold text-blue-600">{calculateTotalLength()}</td>
+                                            <td colSpan="3" className="p-3"></td>
+                                        </tr>
+                                    </tfoot>
                                 </table>
                             </div>
                         </div>
