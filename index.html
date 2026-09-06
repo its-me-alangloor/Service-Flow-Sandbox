@@ -65,11 +65,6 @@
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
-            .print-narrative {
-                border: none !important;
-                background: transparent !important;
-                padding: 0 !important;
-            }
         }
     </style>
 </head>
@@ -361,6 +356,8 @@
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">
                                         Narrative Arc / Story Overview
                                     </label>
+                                    
+                                    {/* On Screen: Interactive Textarea */}
                                     <textarea 
                                         rows={2}
                                         value={currentService.narrativeArc || ""}
@@ -369,8 +366,13 @@
                                             [currentDate]: { ...currentService, narrativeArc: e.target.value }
                                         })}
                                         placeholder="Summarize the thematic trajectory or core story arc for this plan..."
-                                        className="print-narrative w-full text-sm text-slate-700 bg-slate-50 border border-slate-200/80 rounded-lg p-2.5 outline-none focus:bg-white focus:border-blue-500 transition-all resize-y"
+                                        className="no-print w-full text-sm text-slate-700 bg-slate-50 border border-slate-200/80 rounded-lg p-2.5 outline-none focus:bg-white focus:border-blue-500 transition-all resize-y"
                                     />
+
+                                    {/* On Print: Unclipped, full-height text block */}
+                                    <div className="hidden print:block text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">
+                                        {currentService.narrativeArc || <span className="italic text-slate-400">None provided.</span>}
+                                    </div>
                                 </div>
                             </div>
 
