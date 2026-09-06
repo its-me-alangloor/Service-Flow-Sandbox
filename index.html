@@ -65,6 +65,11 @@
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
+            .print-narrative {
+                border: none !important;
+                background: transparent !important;
+                padding: 0 !important;
+            }
         }
     </style>
 </head>
@@ -89,10 +94,21 @@
             );
         };
 
+        const getTodayStr = () => {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+
+        const TODAY_DATE = getTodayStr();
+
         const INITIAL_DATA = {
-            "2026-03-01": {
+            [TODAY_DATE]: {
                 title: "Service Plan",
                 subtitle: "Weekly Flow",
+                narrativeArc: "",
                 items: [
                     { id: 1, section: "GATHERING", length: "20:00", item: "Call to Worship", notes: "" },
                     { id: 2, section: "WORD", length: "36:00", item: "Sermon", notes: "" },
@@ -123,7 +139,7 @@
         };
 
         function App() {
-            const [currentDate, setCurrentDate] = useState("2026-03-01");
+            const [currentDate, setCurrentDate] = useState(TODAY_DATE);
             const [services, setServices] = useState(INITIAL_DATA);
             const [draggedItemIndex, setDraggedItemIndex] = useState(null);
             const [dragOverIndex, setDragOverIndex] = useState(null);
@@ -221,6 +237,7 @@
                         ...services[currentDate],
                         title: services[currentDate].title,
                         subtitle: services[currentDate].subtitle,
+                        narrativeArc: services[currentDate].narrativeArc || "",
                         items: services[currentDate].items.map(item => ({ 
                             ...item, 
                             id: Date.now() + Math.random() 
@@ -256,7 +273,7 @@
                 return formatDuration(totalSeconds);
             };
 
-            const currentService = services[currentDate] || { title: "", subtitle: "", items: [] };
+            const currentService = services[currentDate] || { title: "", subtitle: "", narrativeArc: "", items: [] };
 
             return (
                 <div className="p-4 md:p-8">
@@ -337,6 +354,23 @@
                                             {parseLocalDate(currentDate).toLocaleDateString(undefined, { dateStyle: 'full' })}
                                         </div>
                                     </div>
+                                </div>
+
+                                {/* Narrative Arc Note */}
+                                <div className="mt-4 pt-4 border-t border-slate-100">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">
+                                        Narrative Arc / Story Overview
+                                    </label>
+                                    <textarea 
+                                        rows={2}
+                                        value={currentService.narrativeArc || ""}
+                                        onChange={e => setServices({
+                                            ...services, 
+                                            [currentDate]: { ...currentService, narrativeArc: e.target.value }
+                                        })}
+                                        placeholder="Summarize the thematic trajectory or core story arc for this plan..."
+                                        className="print-narrative w-full text-sm text-slate-700 bg-slate-50 border border-slate-200/80 rounded-lg p-2.5 outline-none focus:bg-white focus:border-blue-500 transition-all resize-y"
+                                    />
                                 </div>
                             </div>
 
@@ -427,14 +461,23 @@
                                         ))}
                                     </tbody>
                                     <tfoot>
-                                        <tr className="total-row border-t-2 border-slate-900/10 font-bold text-slate-800">
+                                        <tr className="total-row border-t-2 border-slate-900/10 font-bold text-xs uppercase tracking-wider text-slate-500">
                                             <td className="p-3 no-print"></td>
-                                            <td className="p-3 text-xs tracking-wider uppercase text-slate-500 font-black">Total Duration</td>
-                                            <td className="p-3 font-mono text-sm font-extrabold text-blue-600">{calculateTotalLength()}</td>
+                                            <td className="p-3 font-black text-slate-900">Total Program Length</td>
+                                            <td className="p-3 font-mono font-black text-blue-600 text-sm">{calculateTotalLength()}</td>
                                             <td colSpan="3" className="p-3"></td>
                                         </tr>
                                     </tfoot>
                                 </table>
+                            </div>
+
+                            <div className="mt-4 no-print flex justify-start">
+                                <button
+                                    onClick={() => addItem(currentService.items.length - 1)}
+                                    className="flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50 px-3 py-2 rounded-lg transition-colors"
+                                >
+                                    <Icon name="plus" size={14} /> Add Row
+                                </button>
                             </div>
                         </div>
                     </div>
